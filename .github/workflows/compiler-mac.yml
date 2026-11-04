@@ -1,0 +1,83 @@
+# Compilation manuelle de l'application AUROREA pour deux familles de Mac.
+name: Compiler AUROREA pour Mac
+
+# La compilation ne démarre que lorsque vous cliquez sur « Run workflow ».
+on:
+  workflow_dispatch:
+
+# GitHub lance une construction sur un Mac Intel et une sur un Mac Apple Silicon.
+jobs:
+  compiler:
+    name: Construire pour ${{ matrix.nom }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ordinateur virtuel avec processeur Apple Silicon (M1 et suivants).
+          - nom: AppleSilicon
+            machine: macos-15
+          # Ordinateur virtuel avec processeur Intel.
+          - nom: Intel
+            machine: macos-15-intel
+    runs-on: ${{ matrix.machine }}
+
+    steps:
+      # Récupère le fichier Python du dépôt GitHub.
+      - name: Récupérer le projet
+        uses: actions/checkout@v4
+
+      # Installe Python dans l'architecture correspondant au Mac virtuel.
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # Installe les outils nécessaires au programme, au PDF et à la compilation.
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller numpy matplotlib reportlab
+
+      # Confirme que le fichier Python est correct avant la compilation.
+      - name: Contrôler le script Python
+        run: python -m py_compile Aurorea_Tout_En_Un.py
+
+      # Produit Aurorea.app (application graphique autonome pour macOS).
+      - name: Construire Aurorea.app
+        run: |
+          python -m PyInstaller \
+            --noconfirm --clean --onedir --windowed \
+            --name Aurorea \
+            --collect-data matplotlib \
+            --collect-data reportlab \
+            Aurorea_Tout_En_Un.py
+
+      # Exécute les tests internes sur le véritable fichier .app produit.
+      - name: Vérifier l'application compilée
+        run: |
+          ./dist/Aurorea.app/Contents/MacOS/Aurorea --test
+
+      # Vérifie aussi le calcul de parties et la génération du rapport PDF.
+      - name: Tester les CSV et le rapport PDF
+        run: |
+          ./dist/Aurorea.app/Contents/MacOS/Aurorea --simuler --parties 4 --graine 12345 --saisons 4 --sans-evenements --out "$RUNNER_TEMP/aurorea_essai"
+          CSV=$(find "$RUNNER_TEMP/aurorea_essai" -name resultats_par_joueur.csv -print -quit)
+          test -n "$CSV"
+          DOSSIER=$(dirname "$CSV")
+          ./dist/Aurorea.app/Contents/MacOS/Aurorea --rapport "$DOSSIER"
+          test -s "$DOSSIER/Rapport_complet_Aurorea.pdf"
+
+      # Met le paquet .app dans une archive qui conserve les droits macOS.
+      - name: Créer l'archive pour le Mac
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent Aurorea.app "Aurorea-Mac-${{ matrix.nom }}.zip"
+
+      # Rend l'archive téléchargeable dans l'onglet Actions de GitHub.
+      - name: Publier le fichier à télécharger
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aurorea-Mac-${{ matrix.nom }}
+          path: dist/Aurorea-Mac-${{ matrix.nom }}.zip
+          if-no-files-found: error
+          retention-days: 30
