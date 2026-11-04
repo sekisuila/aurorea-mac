@@ -40,7 +40,7 @@ jobs:
 
       # Confirme que le fichier Python est correct avant la compilation.
       - name: Contrôler le script Python
-        run: python -m py_compile Aurorea_Tout_En_Un.py
+        run: python -m py_compile Aurorea_Simulateur_V3.py
 
       # Produit Aurorea.app (application graphique autonome pour macOS).
       - name: Construire Aurorea.app
