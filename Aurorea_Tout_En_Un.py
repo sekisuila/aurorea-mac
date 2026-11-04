@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+"""#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""AUROREA - Simulateur statistique tout-en-un V3 avec interface Windows et Mac.
+AUROREA - Simulateur statistique tout-en-un V3 avec interface Windows et Mac.
 
 Un SEUL fichier Python contient : règles expérimentales, simulation, CSV,
 comparaisons des stratégies, graphiques et génération du rapport PDF.
